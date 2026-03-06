@@ -10,8 +10,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const response = await fetch("/activities");
       const activities = await response.json();
 
-      // Clear loading message
+      // Clear loading message and existing dropdown options
       activitiesList.innerHTML = "";
+      activitySelect.innerHTML = "";
 
       // Populate activities list
       Object.entries(activities).forEach(([name, details]) => {
@@ -20,18 +21,71 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
 
-        activityCard.innerHTML = `
-          <h4>${name}</h4>
-          <p>${details.description}</p>
-          <p><strong>Schedule:</strong> ${details.schedule}</p>
-          <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
-          <div class="participants-section">
-            <h5>Participants</h5>
-            <ul class="participants-list">
-              ${details.participants.length > 0 ? details.participants.map(p => `<li><span class="participant-email">${p}</span><button class="delete-participant" data-activity="${name}" data-email="${p}" title="Unregister">✕</button></li>`).join('') : '<li class="no-participants"><em>No participants yet</em></li>'}
-            </ul>
-          </div>
-        `;
+        // Build card header safely
+        const heading = document.createElement("h4");
+        heading.textContent = name;
+
+        const descPara = document.createElement("p");
+        descPara.textContent = details.description;
+
+        const schedulePara = document.createElement("p");
+        const scheduleStrong = document.createElement("strong");
+        scheduleStrong.textContent = "Schedule: ";
+        schedulePara.appendChild(scheduleStrong);
+        schedulePara.appendChild(document.createTextNode(details.schedule));
+
+        const availPara = document.createElement("p");
+        const availStrong = document.createElement("strong");
+        availStrong.textContent = "Availability: ";
+        availPara.appendChild(availStrong);
+        availPara.appendChild(document.createTextNode(`${spotsLeft} spots left`));
+
+        // Build participants section safely
+        const participantsSection = document.createElement("div");
+        participantsSection.className = "participants-section";
+
+        const participantsHeading = document.createElement("h5");
+        participantsHeading.textContent = "Participants";
+        participantsSection.appendChild(participantsHeading);
+
+        const participantsList = document.createElement("ul");
+        participantsList.className = "participants-list";
+
+        if (details.participants.length > 0) {
+          details.participants.forEach(p => {
+            const li = document.createElement("li");
+
+            const emailSpan = document.createElement("span");
+            emailSpan.className = "participant-email";
+            emailSpan.textContent = p;
+
+            const deleteBtn = document.createElement("button");
+            deleteBtn.className = "delete-participant";
+            deleteBtn.title = "Unregister";
+            deleteBtn.textContent = "✕";
+            deleteBtn.dataset.activity = name;
+            deleteBtn.dataset.email = p;
+
+            li.appendChild(emailSpan);
+            li.appendChild(deleteBtn);
+            participantsList.appendChild(li);
+          });
+        } else {
+          const li = document.createElement("li");
+          li.className = "no-participants";
+          const em = document.createElement("em");
+          em.textContent = "No participants yet";
+          li.appendChild(em);
+          participantsList.appendChild(li);
+        }
+
+        participantsSection.appendChild(participantsList);
+
+        activityCard.appendChild(heading);
+        activityCard.appendChild(descPara);
+        activityCard.appendChild(schedulePara);
+        activityCard.appendChild(availPara);
+        activityCard.appendChild(participantsSection);
 
         // Add event listeners for delete buttons
         const deleteButtons = activityCard.querySelectorAll('.delete-participant');
@@ -44,8 +98,8 @@ document.addEventListener("DOMContentLoaded", () => {
             if (confirm(`Are you sure you want to unregister ${email} from ${activityName}?`)) {
               try {
                 const response = await fetch(
-                  `/activities/${encodeURIComponent(activityName)}/unregister?email=${encodeURIComponent(email)}`,
-                  { method: 'POST' }
+                  `/activities/${encodeURIComponent(activityName)}/signup?email=${encodeURIComponent(email)}`,
+                  { method: 'DELETE' }
                 );
 
                 if (response.ok) {
